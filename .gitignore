@@ -2,5 +2,5 @@
 /.vscode
 /bin
 /obj
-/Properties/PublishProfiles
 *.user
+/build
