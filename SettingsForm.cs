@@ -1,11 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace CloudflareTunnelRunner
@@ -25,11 +18,6 @@ namespace CloudflareTunnelRunner
             domainTextBox.Text = userSettings.Domain;
             endpointTextBox.Text = userSettings.Endpoint;
             portTextBox.Text = userSettings.Port;
-        }
-
-        private void settingsPanel_Paint(object sender, PaintEventArgs e)
-        {
-
         }
 
         private void settingsGroupBox_Enter(object sender, EventArgs e)
