@@ -29,6 +29,7 @@ namespace CloudflareTunnelRunner
         /// </summary>
         private void InitializeComponent()
         {
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SettingsForm));
             this.settingsGroup = new System.Windows.Forms.GroupBox();
             this.saveButton = new System.Windows.Forms.Button();
             this.portTextBox = new System.Windows.Forms.TextBox();
@@ -55,7 +56,6 @@ namespace CloudflareTunnelRunner
             this.settingsGroup.TabIndex = 8;
             this.settingsGroup.TabStop = false;
             this.settingsGroup.Text = "Settings";
-            this.settingsGroup.Enter += new System.EventHandler(this.settingsGroupBox_Enter);
             // 
             // saveButton
             // 
@@ -117,11 +117,14 @@ namespace CloudflareTunnelRunner
             // 
             // SettingsForm
             // 
+            this.AcceptButton = this.saveButton;
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(502, 313);
             this.Controls.Add(this.settingsGroup);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "SettingsForm";
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Cloudflare Tunnel Runner";
             this.Load += new System.EventHandler(this.SettingsForm_Load);
             this.settingsGroup.ResumeLayout(false);

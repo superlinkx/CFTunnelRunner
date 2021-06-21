@@ -10,9 +10,10 @@ namespace CloudflareTunnelRunner
 {
     class CFTunnelRunnerContext : ApplicationContext
     {
-        private readonly string cloudflaredLink = "https://bin.equinox.io/c/VdrWdbjqyF/cloudflared-stable-windows-amd64.zip";
-        private readonly string cloudflaredPackageName = "cloudflared-stable-windows-amd64.zip";
+        private readonly string cloudflaredLink = "https://bin.equinox.io/c/VdrWdbjqyF/cloudflared-stable-windows-386.zip";
+        private readonly string cloudflaredPackageName = "cloudflared-stable-windows-386.zip";
         private readonly string cloudflaredInstallLocation = "C:\\cloudflared";
+        private readonly string dataDir;
         private readonly string cloudflaredCommand;
         private Process tunnelProcess;
         private Process rdpProcess;
@@ -24,9 +25,9 @@ namespace CloudflareTunnelRunner
         public CFTunnelRunnerContext()
         {
             cloudflaredCommand = cloudflaredInstallLocation + "\\cloudflared.exe";
-            InitializeTrayIcon();
-            InitializeSettings();
-            LaunchCommandLineApp();
+            dataDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + "\\CTR\\";
+            //InitializeTrayIcon();
+            ShowSettings();
         }
 
         private void InitializeTrayIcon()
@@ -45,73 +46,59 @@ namespace CloudflareTunnelRunner
             notifyIcon.ContextMenuStrip.Items.Add("Exit", null, ExitApp);
         }
 
-        private void InitializeSettings()
-        {
-            settingsForm = new SettingsForm();
-        }
-
         private void LaunchCommandLineApp()
         {
             // Get fresh User Settings every time we run
             userSettings = new UserSettings();
-            if (userSettings.Domain == "")
+            if (!File.Exists(cloudflaredCommand))
             {
-                ShowSettings();
-                // TODO: Handle attempting launch after settings is closed
-            }
-            else
-            {
-                if (!File.Exists(cloudflaredCommand))
-                {
-                    // Should only happen if the command can't be found
-                    var client = new WebClient();
-                    Directory.CreateDirectory(cloudflaredInstallLocation);
-                    client.DownloadFile(cloudflaredLink, cloudflaredPackageName);
-                    // Unpack
-                    ZipFile.ExtractToDirectory(cloudflaredPackageName, cloudflaredInstallLocation);
+                // Should only happen if the command can't be found
+                var client = new WebClient();
+                Directory.CreateDirectory(dataDir);
+                Directory.CreateDirectory(cloudflaredInstallLocation);
+                client.DownloadFile(cloudflaredLink, dataDir + cloudflaredPackageName);
+                // Unpack
+                ZipFile.ExtractToDirectory(cloudflaredPackageName, cloudflaredInstallLocation);
 
-                    try
-                    {
-                        processOutput = new StringBuilder();
-                        // Attempt to update to latest before we move on
-                        Process p = new Process();
-                        p.StartInfo.CreateNoWindow = true;
-                        p.StartInfo.UseShellExecute = false;
-                        p.StartInfo.FileName = cloudflaredCommand;
-                        p.StartInfo.Arguments = "update";
-                        p.Start();
-                        p.BeginErrorReadLine();
-                        p.BeginOutputReadLine();
-                        p.WaitForExit();
-                    }
-                    catch
-                    {
-                        Debug.WriteLine("Oops");
-                    }
-                }
-
-                processOutput = new StringBuilder();
                 try
                 {
-                    // Run the tunnel
-                    // TODO: Make sure the child process gets cleaned up if this application is killed
-                    tunnelProcess = new Process();
-                    tunnelProcess.StartInfo.CreateNoWindow = true;
-                    tunnelProcess.StartInfo.UseShellExecute = false;
-                    tunnelProcess.StartInfo.FileName = cloudflaredCommand;
-                    tunnelProcess.StartInfo.Arguments = "access rdp --hostname " + userSettings.Domain + " --url " + userSettings.Endpoint + ":" + userSettings.Port;
-                    tunnelProcess.Exited += new EventHandler(TunnelExited);
-                    tunnelProcess.Start();
-                    tunnelProcess.BeginErrorReadLine();
-                    tunnelProcess.BeginOutputReadLine();
+                    processOutput = new StringBuilder();
+                    // Attempt to update to latest before we move on
+                    Process p = new Process();
+                    p.StartInfo.CreateNoWindow = true;
+                    p.StartInfo.UseShellExecute = false;
+                    p.StartInfo.FileName = cloudflaredCommand;
+                    p.StartInfo.Arguments = "update";
+                    p.Start();
+                    p.BeginErrorReadLine();
+                    p.BeginOutputReadLine();
+                    p.WaitForExit();
                 }
                 catch
                 {
-                    Debug.WriteLine("Oops");
+                    MessageBox.Show("Tunnel update failed");
                 }
-
-                StartRDPSession();
             }
+
+            processOutput = new StringBuilder();
+            try
+            {
+                // Run the tunnel
+                // TODO: Make sure the child process gets cleaned up if this application is killed
+                tunnelProcess = new Process();
+                tunnelProcess.StartInfo.CreateNoWindow = true;
+                tunnelProcess.StartInfo.UseShellExecute = false;
+                tunnelProcess.StartInfo.FileName = cloudflaredCommand;
+                tunnelProcess.StartInfo.Arguments = "access rdp --hostname " + userSettings.Domain + " --url " + userSettings.Endpoint + ":" + userSettings.Port;
+                tunnelProcess.Exited += new EventHandler(TunnelExited);
+                tunnelProcess.Start();
+            }
+            catch
+            {
+                MessageBox.Show("Tunnel Failed to start");
+            }
+
+            StartRDPSession();
         }
 
         private void StartRDPSession()
@@ -129,21 +116,27 @@ namespace CloudflareTunnelRunner
             }
             catch
             {
-                Debug.WriteLine("Oops");
+                MessageBox.Show("RDP Failed to start");
             }
+
+            EndApp();
         }
 
         private void ShowSettings()
         {
+            if (tunnelProcess != null)
+                KillTunnel();
             if (settingsForm == null || settingsForm.IsDisposed)
                 settingsForm = new SettingsForm();
-            // Open Settings Form
-            settingsForm.Show();
+            if (!settingsForm.Visible) {
+                settingsForm.ShowDialog();
+            }
+            LaunchCommandLineApp();
         }
 
         private void TunnelExited(object sender, EventArgs e)
         {
-            Debug.WriteLine("Tunnel Stopped");
+            MessageBox.Show("Tunnel Stopped");
         }
 
         private void StartTunnel(object sender, EventArgs e)
@@ -153,6 +146,11 @@ namespace CloudflareTunnelRunner
 
         private void StopTunnel(object sender, EventArgs e)
         {
+            KillTunnel();
+        }
+
+        private void KillTunnel()
+        {
             tunnelProcess.Kill();
         }
 
@@ -161,13 +159,18 @@ namespace CloudflareTunnelRunner
             ShowSettings();
         }
 
-        private void ExitApp(object sender, EventArgs e)
-        {
+        private void EndApp() {
             // Hide tray icon, otherwise it will remain shown until user mouses over it
-            notifyIcon.Visible = false;
+            //notifyIcon.Visible = false;
             if (tunnelProcess != null)
                 tunnelProcess.Kill();
             Application.Exit();
+            Environment.Exit(0);
+        }
+
+        private void ExitApp(object sender, EventArgs e)
+        {
+            EndApp();
         }
     }
 }

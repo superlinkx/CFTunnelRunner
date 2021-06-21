@@ -20,11 +20,6 @@ namespace CloudflareTunnelRunner
             portTextBox.Text = userSettings.Port;
         }
 
-        private void settingsGroupBox_Enter(object sender, EventArgs e)
-        {
-
-        }
-
         private void saveButton_Click(object sender, EventArgs e)
         {
             userSettings.Domain = domainTextBox.Text;
